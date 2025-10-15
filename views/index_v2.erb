@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Boaty Shop V2</title>
+        <link rel="stylesheet" type="text/css" href="/styles.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+        <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+        <script src="/cart.js" defer></script>
+    </head>
+    <body class="home-v2">
+        <header>
+            <img src="/images/logo.png" alt="Boaty Shop Logo" class="logo">
+            <h1>Welcome to The Boaty Shop</h1>
+            <p>Your one-stop shop for watercraft body customizations!</p>
+            <div class="cart-container">
+                <i class="fas fa-shopping-cart"></i>
+                <span id="cart-count">0</span>
+            </div>
+        </header>
+        <div class="video-container">
+            <video src="/videos/Jetski_and_Helicopter_Video_Generation.mp4" class="active" autoplay muted loop></video>
+            <video src="/videos/sailboat_vid.mp4" autoplay muted loop></video>
+            <video src="/videos/submarine_vid.mp4" autoplay muted loop></video>
+        </div>
+        <div class="overlay-content">
+            <div class="watercraft-names">
+                <h2>Our Watercraft</h2>
+                <ul>
+                    <li><a href="/jetski">Jetski</a></li>
+                    <li><a href="/yacht">Yacht</a></li>
+                    <li><a href="/canoe">Canoe</a></li>
+                    <li><a href="/submarine">Submarine</a></li>
+                    <li><a href="/sailboat">Sailboat</a></li>
+                </ul>
+            </div>
+        </div>
+        <footer>
+            <p>&copy; 2025 The Boaty Shop</p>
+        </footer>
+        <script src="/video-cycler.js"></script>
+    </body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Checkout</title>
+        <link rel="stylesheet" type="text/css" href="/styles.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+        <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+        <script src="/cart.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <a href="/"><img src="/images/logo.png" alt="Boaty Shop Logo" class="logo"></a>
+            <h1>Checkout</h1>
+            <div class="cart-container">
+                <i class="fas fa-shopping-cart"></i>
+                <span id="cart-count">0</span>
+            </div>
+        </header>
+        <div class="checkout-container">
+            <div class="checkout-form">
+                <h2>Shipping & Payment Information</h2>
+                <form>
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" required>
+
+                    <label for="address">Address</label>
+                    <input type="text" id="address" name="address" required>
+
+                    <label for="city">City</label>
+                    <input type="text" id="city" name="city" required>
+
+                    <label for="state">State</label>
+                    <input type="text" id="state" name="state" required>
+
+                    <label for="zip">ZIP Code</label>
+                    <input type="text" id="zip" name="zip" required>
+
+                    <h2>Card Details</h2>
+                    <label for="card_number">Card Number</label>
+                    <input type="text" id="card_number" name="card_number" required>
+
+                    <label for="expiration_date">Expiration Date (MM/YY)</label>
+                    <input type="text" id="expiration_date" name="expiration_date" placeholder="MM/YY" required oninput="formatExpiryDate(this)">
+
+                    <label for="cvv">CVV</label>
+                    <input type="text" id="cvv" name="cvv" required>
+
+                    <button type="submit" class="btn">Place Order</button>                                                                               
+                    </form>                                                                                                                                  
+                <div class="voice-icon-wrapper">
+                    <i id="voice-icon" class="voice-icon" onclick="voice_auto_complete()" title="Auto-complete with voice">
+                        <span class="fas fa-microphone"></span> 
+                    </i>
+                </div>
+                <p id="timer-display" style="display: none;"></p>
+            </div>                                                                                                                                       
+                    <div class="cart-summary">                                                                                                                   
+                        <h2>Cart Summary</h2>                                                                                                                    
+                        <ul id="cart-items">                                                                                                                     
+                            <!-- Cart items will be dynamically inserted here -->                                                                                
+                        </ul>                                                                                                                                   
+                         <hr>                                                                                                                                     
+                        <p>Total: $<span id="cart-total">0.00</span></p>                                                                                         
+                    </div>                                                                                                                                       
+                </div>                                                                                                                                           
+            <footer>                                                                                                                                         
+               <p>&copy; 2025 The Boaty Shop</p>                                                                                                            
+            </footer> 
+<script>
+function formatExpiryDate(input) {
+    let value = input.value.replace(/\D/g, ''); // Remove all non-digit characters
+    if (value.length > 4) {
+        value = value.slice(0, 4);
+    }
+
+    if (value.length <= 3 && !input.value.includes('/')) {
+        // If 3 digits are entered, assume month is single digit, prepend 0
+        value = '0' + value.slice(0, 1) + '/' + value.slice(1, 3);
+    } else {
+        // Add slash after the first two digits (month)
+        value = value.slice(0, 2) + '/' + value.slice(2);
+    }
+    
+    input.value = value;
+}
+
+async function voice_auto_complete() {
+    const voiceIcon = document.getElementById('voice-icon');
+    const timerDisplay = document.getElementById('timer-display');
+    const originalColor = voiceIcon.style.backgroundColor;
+    let timerInterval;
+
+    voiceIcon.style.backgroundColor = 'red';
+    timerDisplay.style.display = 'block';
+    let timeLeft = 10;
+    timerDisplay.textContent = `Recording... ${timeLeft}s`;
+
+    try {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerDisplay.textContent = `Recording... ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+            }
+        }, 1000);
+
+        const audioChunks = [];
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+        // Collect audio data
+        mediaRecorder.addEventListener('dataavailable', event => {
+            audioChunks.push(event.data);
+        });
+
+        // Start recording
+        mediaRecorder.start();
+
+        // Stop recording after 8 seconds
+        await new Promise(resolve => setTimeout(() => {
+            mediaRecorder.stop();
+            resolve();
+        }, 8000));
+
+        // Wait for the recording to finish
+        await new Promise(resolve => {
+            mediaRecorder.addEventListener('stop', resolve);
+        });
+
+        // Create the audio blob
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+        if (window.LanguageModel) {
+            const session = await window.LanguageModel.create({
+                expectedInputs: [{ type: 'audio' }],
+            });
+
+            const outputSchema = {
+                type: 'object',
+                properties: {
+                    name: { type: 'string' },
+                    address: { type: 'string' },
+                    city: { type: 'string' },
+                    state: { type: 'string' },
+                    zip: { type: 'string' },
+                    card_number: { type: 'string' },
+                    expiration_date: { type: 'string' },
+                    cvv: { type: 'string' },
+                },
+                required: ['name', 'address', 'city', 'state', 'zip', 'card_number', 'expiration_date', 'cvv'],
+            };
+
+            // Parse the result into a structured data object
+            const result = await session.prompt([
+                {
+                    role: 'user',
+                    responseConstraint: outputSchema,
+                    content: [
+                        { type: 'text', value: 'You are a transcriber. Parse the audio file into JSON output that maps the fields of the checkout form to the value said in the input audio. The fields of the JSON output should be keyed with the exactly following values: name, address, city, state, zip, card_number, expiration_date and cvv. If a field is not mentioned in the audio, remove the field from the output JSON. Always put a "/" in the middle of the 4 expiration date digits' },
+                        { type: 'audio', value: audioBlob },
+                    ],
+                    expectedOutputs: [{ type: 'text', language: 'en'}],
+                },
+            ]);
+
+            console.log(result);
+
+            // Clean the string to remove markdown formatting
+            const cleanedResult = result.replace(/^```json\s*/, '').replace(/```$/, '');
+
+            // Parse the JSON string into an object
+            const data = JSON.parse(cleanedResult);
+
+            // Helper function to apply the flash effect
+            function applyFlash(element) {
+                element.classList.add('flash-effect');
+                setTimeout(() => {
+                    element.classList.remove('flash-effect');
+                }, 3000); // Remove class after 3s (duration of animation)
+            }
+
+            // Fill the form fields with the associated structured data values
+            if (data.name) {
+                const el = document.getElementById('name');
+                el.value = data.name;
+                applyFlash(el);
+            }
+            if (data.address) {
+                const el = document.getElementById('address');
+                el.value = data.address;
+                applyFlash(el);
+            }
+            if (data.city) {
+                const el = document.getElementById('city');
+                el.value = data.city;
+                applyFlash(el);
+            }
+            if (data.state) {
+                const el = document.getElementById('state');
+                el.value = data.state;
+                applyFlash(el);
+            }
+            if (data.zip) {
+                const el = document.getElementById('zip');
+                el.value = data.zip;
+                applyFlash(el);
+            }
+            if (data.card_number) {
+                const el = document.getElementById('card_number');
+                el.value = data.card_number;
+                applyFlash(el);
+            }
+            if (data.expiration_date) {
+                const el = document.getElementById('expiration_date');
+                el.value = data.expiration_date;
+                applyFlash(el);
+            }
+            if (data.cvv) {
+                const el = document.getElementById('cvv');
+                el.value = data.cvv;
+                applyFlash(el);
+            }
+        }
+    } catch (err) {
+        console.error('Error during voice auto-complete:', err);
+    } finally {
+        voiceIcon.style.backgroundColor = originalColor;
+        clearInterval(timerInterval); // Ensure timer is cleared
+        timerDisplay.style.display = 'none';
+    }
+}
+
+            const prices = {
+                "Kevlar Reinforcement": 300,
+                "Custom Wood Inlays": 500,
+                "Stabilizer Outriggers": 200,
+                "Custom Paint Job": 5000,
+                "Upgraded Hull": 1500,
+                "Racing Fins": 300,
+                "Carbon Fiber Mast": 20000,
+                "Racing Sails": 10000,
+                "Custom Keel": 15000,
+                "Titanium Hull Plating": 100000,
+                "Sonar Upgrade": 50000,
+                "Luxury Interior": 200000,
+                "Custom Teak Decking": 10000,
+                "Extended Swim Platform": 15000,
+                "Underwater Lighting": 5000
+            };
+
+            function renderCart() {
+                const cartItemsList = document.getElementById('cart-items');
+                const cartTotalElement = document.getElementById('cart-total');
+                const cartCount = document.getElementById('cart-count');
+                let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+                let total = 0;
+                cartItemsList.innerHTML = ''; // Clear existing items
+
+                if (cart.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Your cart is empty.';
+                    cartItemsList.appendChild(li);
+                } else {
+                    cart.forEach(item => {
+                        const li = document.createElement('li');
+                        const itemText = document.createElement('span');
+                        const price = prices[item] || 0;
+                        itemText.textContent = `${item} - $${price.toLocaleString()}`;
+                        
+                        const removeBtn = document.createElement('span');
+                        removeBtn.textContent = '✖';
+                        removeBtn.className = 'remove-item';
+                        removeBtn.title = `Remove ${item}`;
+                        removeBtn.onclick = () => {
+                            cart = cart.filter(cartItem => cartItem !== item);
+                            localStorage.setItem('cart', JSON.stringify(cart));
+                            renderCart(); // Re-render the cart
+                        };
+
+                        li.appendChild(itemText);
+                        li.appendChild(removeBtn);
+                        cartItemsList.appendChild(li);
+                        total += price;
+                    });
+                }
+
+                cartTotalElement.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                if (cartCount) {
+                    cartCount.textContent = cart.length;
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                renderCart();
+            });
+        </script>
+    </body>
+</html>
